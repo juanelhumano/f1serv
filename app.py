@@ -7,11 +7,11 @@ import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-# Permitir conexiones desde cualquier origen (CORS) para que funcione tu HTML
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+
+# CAMBIO IMPORTANTE: Quitamos async_mode='eventlet' para que detecte gevent automáticamente
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Base de datos en memoria (RAM)
-# Estructura: { 'ROOM_ID': { status: 'waiting', players: { 'UID': { data... } } } }
 games = {}
 
 def generate_room_id():
@@ -118,7 +118,6 @@ def on_update(data):
     
     if room_id in games and uid in games[room_id]['players']:
         player = games[room_id]['players'][uid]
-        # Actualizamos coordenadas
         player['x'] = p_data.get('x', player['x'])
         player['y'] = p_data.get('y', player['y'])
         player['finished'] = p_data.get('finished', player.get('finished', False))
@@ -133,9 +132,6 @@ def on_update(data):
         if all_done:
             games[room_id]['status'] = 'finished'
             
-        # Rebotamos el estado a todos (Broadcast)
-        # Nota: Para producción masiva, se suele usar un loop de servidor a X tickrate.
-        # Para este prototipo, rebotar cada mensaje funciona bien hasta ~10 jugadores.
         emit('game_update', games[room_id], to=room_id)
 
 @socketio.on('force_finish')
